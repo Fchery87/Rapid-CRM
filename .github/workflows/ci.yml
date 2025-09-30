@@ -80,6 +80,40 @@ jobs:
         working-directory: apps/web
         run: pnpm test:e2e
 
+  storybook-a11y:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.10.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install
+        run: pnpm install
+
+      - name: Build Storybook
+        working-directory: apps/web
+        run: pnpm build-storybook
+
+      - name: Serve Storybook
+        working-directory: apps/web
+        run: npx http-server ./storybook-static -p 6007 &
+
+      - name: Run Storybook a11y tests
+        working-directory: apps/web
+        env:
+          STORYBOOK_URL: http://localhost:6007
+        run: pnpm test-storybook
+
   audit-api-validation:
     # Optional job - runs on a specifically labeled self-hosted runner
     if: github.event_name == 'workflow_dispatch' && inputs.run_audit_validation == 'true'

@@ -10,7 +10,10 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:unit": "vitest run",
-    "pdf:demo": "node scripts/render-pdf.mjs"
+    "pdf:demo": "node scripts/render-pdf.mjs",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "test-storybook": "test-storybook"
   },
   "dependencies": {
     "next": "14.2.5",
@@ -28,6 +31,12 @@
     "postcss": "8.4.41",
     "tailwindcss": "3.4.10",
     "typescript": "5.6.2",
-    "vitest": "2.1.1"
+    "vitest": "2.1.1",
+    "@storybook/addon-a11y": "8.2.6",
+    "@storybook/addon-essentials": "8.2.6",
+    "@storybook/react-vite": "8.2.6",
+    "@storybook/test": "8.2.6",
+    "@storybook/test-runner": "0.19.1",
+    "vite": "5.4.8"
   }
 }

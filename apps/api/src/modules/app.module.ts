@@ -14,10 +14,11 @@ import { AuditService } from "./audit/audit.service";
 import { ReportsController } from "./reports/reports.controller";
 import { PdfController } from "./pdf/pdf.controller";
 import { PdfWorker } from "./pdf/pdf.worker";
+import { PdfJobsController } from "./pdf/pdfjobs.controller";
 
 @Module({
   imports: [],
-  controllers: [HealthController, AuthController, UploadsController, AccountsController, MetricsController, AuditController, ReportsController, PdfController],
+  controllers: [HealthController, AuthController, UploadsController, AccountsController, MetricsController, AuditController, ReportsController, PdfController, PdfJobsController],
   providers: [PrismaService, UploadsService, S3Service, IngestionService, MetricsService, AuditService, PdfWorker]
 })
 export class AppModule {}

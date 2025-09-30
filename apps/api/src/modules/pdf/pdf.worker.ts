@@ -88,12 +88,25 @@ export class PdfWorker implements OnModuleInit {
         }
         if (data.type === "letter") {
           const payload = {
+            reportId: data.reportId,
+            bureau: data.bureau,
             branding: data.branding,
             items: data.items || []
           };
-          const encoded = Buffer.from(JSON.stringify(payload)).toString("base64");
-          const url = `${WEB_URL}/letter/${data.reportId}${data.bureau ? `?bureau=${data.bureau}` : ""}&data=${encodeURIComponent(encoded)}`;
-          const pdf = await renderPdfFromUrl(url, data.branding?.header || "Rapid — Dispute Letter", data.branding?.footer || `Dispute Letter${data.bureau ? ` — ${data.bureau}` : ""}`);
+          // Request server-side rendered HTML from web route
+          const res = await fetch(`${WEB_URL}/api/letter/render`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const html = await res.text();
+          const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
+          const ctx = await browser.newContext();
+          const page = await ctx.newPage();
+          await page.setContent(html, { waitUntil: "load" });
+          const pdf = await page.pdf({ format: "A4", printBackground: true, margin: { top: "10mm", bottom: "10mm", left: "10mm", right: "10mm" } });
+          await browser.close();
+
           const key = `pdfs/letter-${data.reportId}${data.bureau ? `-${data.bureau}` : ""}.pdf`;
           await this.s3.putObject(key, pdf, "application/pdf");
           this.metrics.incPdf("letter");
@@ -104,10 +117,20 @@ export class PdfWorker implements OnModuleInit {
           const bureaus = data.bureaus && data.bureaus.length ? data.bureaus : (["TU","EX","EQ"] as Array<"TU"|"EX"|"EQ">);
           const keys: string[] = [];
           for (const b of bureaus) {
-            const payload = { branding: data.branding, items: data.items || [] };
-            const encoded = Buffer.from(JSON.stringify(payload)).toString("base64");
-            const url = `${WEB_URL}/letter/${data.reportId}?bureau=${b}&data=${encodeURIComponent(encoded)}`;
-            const pdf = await renderPdfFromUrl(url, data.branding?.header || "Rapid — Dispute Letter", data.branding?.footer || `Dispute Letter — ${b}`);
+            const payload = { reportId: data.reportId, bureau: b, branding: data.branding, items: data.items || [] };
+            const res = await fetch(`${WEB_URL}/api/letter/render`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+            const html = await res.text();
+            const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
+            const ctx = await browser.newContext();
+            const page = await ctx.newPage();
+            await page.setContent(html, { waitUntil: "load" });
+            const pdf = await page.pdf({ format: "A4", printBackground: true, margin: { top: "10mm", bottom: "10mm", left: "10mm", right: "10mm" } });
+            await browser.close();
+
             const key = `pdfs/letter-${data.reportId}-${b}.pdf`;
             await this.s3.putObject(key, pdf, "application/pdf");
             this.metrics.incPdf("letter");
