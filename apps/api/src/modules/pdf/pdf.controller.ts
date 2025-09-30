@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { S3Service } from "../s3/s3.service";
 import { chromium } from "playwright";
 import { MetricsService } from "../metrics/metrics.service";
 import JSZip from "jszip";
 import { PdfWorker } from "./pdf.worker";
+import { ApiKeyGuard } from "../auth/api-key.guard";
 
 const WEB_URL = process.env.WEB_URL || "http://localhost:3000";
 
@@ -49,6 +50,7 @@ async function renderPdfFromUrl(url: string, header = "RAPID", footer = "Generat
   return pdfBuffer;
 }
 
+@UseGuards(ApiKeyGuard)
 @Controller("pdfs")
 export class PdfController {
   constructor(

@@ -4,6 +4,7 @@ import IORedis from "ioredis";
 import { S3Service } from "../s3/s3.service";
 import { chromium } from "playwright";
 import { MetricsService } from "../metrics/metrics.service";
+import { PrismaService } from "../prisma/prisma.service";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const WEB_URL = process.env.WEB_URL || "http://localhost:3000";
@@ -59,7 +60,7 @@ export class PdfWorker implements OnModuleInit {
   private worker!: Worker;
   private events!: QueueEvents;
 
-  constructor(private s3: S3Service, private metrics: MetricsService) {
+  constructor(private s3: S3Service, private metrics: MetricsService, private prisma: PrismaService) {
     const connection = new IORedis(REDIS_URL);
     this.queue = new Queue("pdf", { connection });
     this.events = new QueueEvents("pdf", { connection });
@@ -70,13 +71,19 @@ export class PdfWorker implements OnModuleInit {
     this.worker = new Worker(
       "pdf",
       async (job) => {
-        const data = job.data as PdfJob & { callbackUrl?: string };
+        const data = job.data as PdfJob & { callbackUrl?: string; dbId?: string };
+        // mark processing
+        if (data.dbId) {
+          await this.prisma.pdfJob.update({ where: { id: data.dbId }, data: { status: "PROCESSING" } });
+        }
+
         if (data.type === "audit") {
           const url = `${WEB_URL}/audit/${data.reportId}`;
           const pdf = await renderPdfFromUrl(url, data.branding?.header || "Rapid — Simple Audit", data.branding?.footer || "Audit");
           const key = `pdfs/${data.reportId}.pdf`;
           await this.s3.putObject(key, pdf, "application/pdf");
           this.metrics.incPdf("audit");
+          if (data.dbId) await this.prisma.pdfJob.update({ where: { id: data.dbId }, data: { status: "COMPLETED", resultKey: key } });
           return { key };
         }
         if (data.type === "letter") {
@@ -90,6 +97,7 @@ export class PdfWorker implements OnModuleInit {
           const key = `pdfs/letter-${data.reportId}${data.bureau ? `-${data.bureau}` : ""}.pdf`;
           await this.s3.putObject(key, pdf, "application/pdf");
           this.metrics.incPdf("letter");
+          if (data.dbId) await this.prisma.pdfJob.update({ where: { id: data.dbId }, data: { status: "COMPLETED", resultKey: key } });
           return { key };
         }
         if (data.type === "letters-batch") {
@@ -105,6 +113,7 @@ export class PdfWorker implements OnModuleInit {
             this.metrics.incPdf("letter");
             keys.push(key);
           }
+          if (data.dbId) await this.prisma.pdfJob.update({ where: { id: data.dbId }, data: { status: "COMPLETED" } });
           return { keys };
         }
         return {};
@@ -112,13 +121,20 @@ export class PdfWorker implements OnModuleInit {
       { connection }
     );
 
-    this.events.on("failed", ({ jobId, failedReason }) => {
+    this.events.on("failed", async ({ jobId, failedReason }) => {
       // eslint-disable-next-line no-console
       console.error("PDF job failed", jobId, failedReason);
+      try {
+        const job = await this.queue.getJob(jobId);
+        const data = job?.data as any;
+        if (data?.dbId) {
+          await this.prisma.pdfJob.update({ where: { id: data.dbId }, data: { status: "FAILED", error: failedReason || "unknown" } });
+        }
+      } catch {}
     });
 
     this.events.on("completed", async ({ jobId }) => {
-      // would fetch job result and POST to callback if provided in job data
+      // callback with result if provided
       try {
         const job = await this.queue.getJob(jobId);
         const data = job?.data as any;
@@ -138,7 +154,19 @@ export class PdfWorker implements OnModuleInit {
   }
 
   async enqueue(data: PdfJob & { callbackUrl?: string }, opts?: JobsOptions) {
-    const job = await this.queue.add("generate", data, opts);
+    // persist job metadata
+    const db = await this.prisma.pdfJob.create({
+      data: {
+        type: data.type === "audit" ? "AUDIT" : data.type === "letter" ? "LETTER" : "LETTERS_BATCH",
+        reportId: data.reportId,
+        bureau: data.type === "letter" ? (data.bureau as any) : null,
+        status: "QUEUED",
+        payload: data as any,
+        callbackUrl: (data as any).callbackUrl || null
+      }
+    });
+    const job = await this.queue.add("generate", { ...data, dbId: db.id }, opts);
+    await this.prisma.pdfJob.update({ where: { id: db.id }, data: { bullId: job.id || null } });
     return job.id;
   }
 

@@ -119,3 +119,32 @@ enum Bureau {
   EX
   EQ
 }
+
+enum PdfType {
+  AUDIT
+  LETTER
+  LETTERS_BATCH
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model PdfJob {
+  id          String     @id @default(cuid())
+  bullId      String?    @unique
+  type        PdfType
+  reportId    String
+  bureau      Bureau?
+  status      JobStatus  @default(QUEUED)
+  payload     Json?
+  resultKey   String?
+  zipKey      String?
+  callbackUrl String?
+  error       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
