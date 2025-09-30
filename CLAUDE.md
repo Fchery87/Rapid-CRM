@@ -9,13 +9,13 @@ Date: 2025-09-30
 ## Quick Links
 
 - Product Requirements Document (PRD)  
-  - ./docs/option-a/PRD.md
+  - ./docs/PRD.md
 
 - Product/Project Plan (PRP)  
-  - ./docs/option-a/PRP.md
+  - ./docs/PRP.md
 
 - Task Plan (Epics, Stories, Acceptance Criteria)  
-  - ./docs/option-a/TASKS.md
+  - ./docs/TASKS.md
 
 - Debug & Sustaining Rules (L7 Discipline)  
   - ./DEBUG_RULES.md
