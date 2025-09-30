@@ -94,9 +94,10 @@ export class PdfWorker implements OnModuleInit {
             items: data.items || []
           };
           // Request server-side rendered HTML from web route
+          const authHeader = process.env.SERVICE_RENDER_TOKEN ? { Authorization: `Bearer ${process.env.SERVICE_RENDER_TOKEN}` } : {};
           const res = await fetch(`${WEB_URL}/api/letter/render`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...authHeader },
             body: JSON.stringify(payload)
           });
           const html = await res.text();
@@ -118,9 +119,7 @@ export class PdfWorker implements OnModuleInit {
           const keys: string[] = [];
           for (const b of bureaus) {
             const payload = { reportId: data.reportId, bureau: b, branding: data.branding, items: data.items || [] };
-            const res = await fetch(`${WEB_URL}/api/letter/render`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
+            const authHeader = process.env.SERVICE_RENDER_TOKEN ? { Authorization: `Bearer ${process.env.S        headers: { "Content-Type": "application/json" },
               body: JSON.stringify(payload)
             });
             const html = await res.text();

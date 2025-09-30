@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
+    const token = process.env.SERVICE_RENDER_TOKEN || "";
+    const auth = req.headers.get("authorization") || "";
+    if (token) {
+      const expected = `Bearer ${token}`;
+      // constant-time compare
+      const ok = expected.length === auth.length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(auth));
+      if (!ok) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     const { reportId, bureau, branding, items, body } = await req.json();
 
     const title = "Dispute Letter";
@@ -65,7 +76,7 @@ export async function POST(req: NextRequest) {
   </body>
 </html>`;
 
-    return new NextResponse(html, { headers: { "Content-Type": "text/html" } });
+    return new NextResponse(html, { headers: { "Content-Type": "text/html", "Cache-Control": "no-store" } });
   } catch (e) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
