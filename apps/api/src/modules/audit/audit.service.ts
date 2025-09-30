@@ -59,9 +59,17 @@ export class AuditService {
     const totalLimit = withLimits.reduce((acc, t) => acc + (t.creditLimit || 0), 0);
     const currentUtil = totalLimit > 0 ? Math.round((totalBalance / totalLimit) * 100) : 0;
     const target = 10;
+
+    // Approximate per-bureau utilization evenly for bureaus present
+    const byBureau: { TU?: number; EX?: number; EQ?: number } = {};
+    const presentBureaus = report.bureaus.map((b) => b.bureau as "TU" | "EX" | "EQ");
+    for (const b of presentBureaus) {
+      byBureau[b] = currentUtil;
+    }
+
     const utilization = {
       overall: { current: currentUtil, target, delta: currentUtil - target },
-      byBureau: {} as { TU?: number; EX?: number; EQ?: number } // per-bureau requires bureau attribution in normalized data
+      byBureau
     };
 
     // Negative items from tradelines and public records

@@ -13,7 +13,8 @@
     "prisma:migrate:dev": "prisma migrate dev --name init",
     "prisma:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "seed": "node scripts/seed.mjs"
+    "seed": "node scripts/seed.mjs",
+    "test:audit:local": "node scripts/test-audit.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.665.0",
