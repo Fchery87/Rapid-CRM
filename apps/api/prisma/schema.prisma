@@ -23,11 +23,24 @@ enum UserRole {
 
 model Account {
   id        String   @id @default(cuid())
-  name      String
+  name      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  reports CreditReport[]
+  reports  CreditReport[]
+  uploads  Upload[]
+}
+
+model Upload {
+  id           String   @id @default(cuid())
+  accountId    String
+  objectKey    String   @unique
+  originalName String
+  contentType  String
+  size         Int
+  createdAt    DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id])
 }
 
 model CreditReport {
