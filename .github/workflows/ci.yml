@@ -65,3 +65,59 @@ jobs:
       - name: A11y E2E tests (/login)
         working-directory: apps/web
         run: pnpm test:e2e
+
+  audit-api-validation:
+    # Optional job - runs only if a self-hosted runner is available
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.10.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install
+        run: pnpm install
+
+      - name: Start infra (Docker Compose)
+        run: docker compose up -d
+
+      - name: Migrate and seed
+        run: |
+          pnpm --filter @rapid/api prisma:migrate:dev
+          pnpm --filter @rapid/api seed
+
+      - name: Build API
+        working-directory: apps/api
+        run: pnpm build
+
+      - name: Start API background
+        working-directory: apps/api
+        run: node dist/main.js &
+      
+      - name: Wait for API
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:4000/api/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to start"
+          exit 1
+
+      - name: Run Audit API validation
+        run: pnpm --filter @rapid/api test:audit:api
+
+      - name: Teardown infra
+        if: always()
+        run: docker compose down -v

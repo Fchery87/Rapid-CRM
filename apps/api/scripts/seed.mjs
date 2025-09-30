@@ -9,7 +9,7 @@ function daysAgo(n) {
 }
 
 async function seedReportDetails(reportId, variant = 1) {
-  // Tradelines: include a couple of negative items and utilization placeholders
+  // Tradelines with reported bureaus
   await prisma.tradeline.create({
     data: {
       creditReportId: reportId,
@@ -19,6 +19,7 @@ async function seedReportDetails(reportId, variant = 1) {
       utilization: 40,
       isNegative: variant === 1,
       issues: variant === 1 ? ["late_payment"] : [],
+      reportedBureaus: ["TU", "EX"],
       openedDate: daysAgo(400)
     }
   });
@@ -31,6 +32,7 @@ async function seedReportDetails(reportId, variant = 1) {
       utilization: 1,
       isNegative: false,
       issues: [],
+      reportedBureaus: ["EQ"],
       openedDate: daysAgo(800)
     }
   });
@@ -43,6 +45,7 @@ async function seedReportDetails(reportId, variant = 1) {
       utilization: 93,
       isNegative: true,
       issues: ["high_utilization"],
+      reportedBureaus: ["TU", "EQ"],
       openedDate: daysAgo(200)
     }
   });

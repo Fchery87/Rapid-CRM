@@ -60,11 +60,20 @@ export class AuditService {
     const currentUtil = totalLimit > 0 ? Math.round((totalBalance / totalLimit) * 100) : 0;
     const target = 10;
 
-    // Approximate per-bureau utilization evenly for bureaus present
+    // Per-bureau utilization using reportedBureaus attribution when available; fallback to overall
     const byBureau: { TU?: number; EX?: number; EQ?: number } = {};
-    const presentBureaus = report.bureaus.map((b) => b.bureau as "TU" | "EX" | "EQ");
-    for (const b of presentBureaus) {
-      byBureau[b] = currentUtil;
+    const bureaus: Array<"TU" | "EX" | "EQ"> = ["TU", "EX", "EQ"];
+    for (const b of bureaus) {
+      const tForBureau = withLimits.filter((t) => Array.isArray(t.reportedBureaus) && t.reportedBureaus.includes(b));
+      if (tForBureau.length) {
+        const bal = tForBureau.reduce((acc, t) => acc + (t.balance || 0), 0);
+        const lim = tForBureau.reduce((acc, t) => acc + (t.creditLimit || 0), 0);
+        byBureau[b] = lim > 0 ? Math.round((bal / lim) * 100) : 0;
+      } else {
+        // Fallback only if bureau exists on the report
+        const present = report.bureaus.some((br) => br.bureau === b);
+        if (present) byBureau[b] = currentUtil;
+      }
     }
 
     const utilization = {

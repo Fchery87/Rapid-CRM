@@ -78,16 +78,17 @@ model BureauReport {
 }
 
 model Tradeline {
-  id             String   @id @default(cuid())
-  creditReportId String
-  creditorName   String
-  balance        Int?
-  creditLimit    Int?
-  utilization    Float?   // percentage 0-100
-  isNegative     Boolean  @default(false)
-  issues         String[] // e.g., ["late_payment", "charge_off"]
-  openedDate     DateTime?
-  closedDate     DateTime?
+  id               String   @id @default(cuid())
+  creditReportId   String
+  creditorName     String
+  balance          Int?
+  creditLimit      Int?
+  utilization      Float?   // percentage 0-100
+  isNegative       Boolean  @default(false)
+  issues           String[] // e.g., ["late_payment", "charge_off"]
+  reportedBureaus  Bureau[] // bureaus that report this tradeline
+  openedDate       DateTime?
+  closedDate       DateTime?
 
   creditReport CreditReport @relation(fields: [creditReportId], references: [id])
 }
