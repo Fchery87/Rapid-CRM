@@ -4,6 +4,7 @@ import { S3Service } from "../s3/s3.service";
 import crypto from "node:crypto";
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
+import { MetricsService } from "../metrics/metrics.service";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
@@ -11,7 +12,7 @@ const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 export class UploadsService {
   private parseQueue: Queue;
 
-  constructor(private prisma: PrismaService, private s3: S3Service) {
+  constructor(private prisma: PrismaService, private s3: S3Service, private metrics: MetricsService) {
     const connection = new IORedis(REDIS_URL);
     this.parseQueue = new Queue("parse", { connection });
   }
@@ -59,6 +60,7 @@ export class UploadsService {
       accountId: upload.accountId,
       downloadUrl
     });
+    this.metrics.markEnqueued();
 
     return { ok: true };
   }

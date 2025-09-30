@@ -7,10 +7,12 @@ import { UploadsService } from "./uploads/uploads.service";
 import { S3Service } from "./s3/s3.service";
 import { AccountsController } from "./accounts/accounts.controller";
 import { IngestionService } from "./ingestion/ingestion.service";
+import { MetricsService } from "./metrics/metrics.service";
+import { MetricsController } from "./metrics/metrics.controller";
 
 @Module({
   imports: [],
-  controllers: [HealthController, AuthController, UploadsController, AccountsController],
-  providers: [PrismaService, UploadsService, S3Service, IngestionService]
+  controllers: [HealthController, AuthController, UploadsController, AccountsController, MetricsController],
+  providers: [PrismaService, UploadsService, S3Service, IngestionService, MetricsService]
 })
 export class AppModule {}
