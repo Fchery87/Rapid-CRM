@@ -16,6 +16,11 @@ export class MetricsService {
   queueWaiting: Gauge;
   queueActive: Gauge;
 
+  httpRequests: Counter;
+  httpDuration: Histogram;
+
+  pdfGenerated: Counter;
+
   private queue: Queue;
 
   constructor() {
@@ -47,9 +52,31 @@ export class MetricsService {
       help: "Number of jobs waiting in parse queue",
       registers: [this.registry]
     });
-    this.queueActive = new Gauge({
+    this.queueActive = a new Gauge({
       name: "parse_queue_active",
       help: "Number of active jobs in parse queue",
+      registers: [this.registry]
+    });
+
+    this.httpRequests = new Counter({
+      name: "http_requests_total",
+      help: "Total HTTP requests",
+      labelNames: ["method", "route", "status"] as const,
+      registers: [this.registry]
+    });
+
+    this.httpDuration = new Histogram({
+      name: "http_request_duration_seconds",
+      help: "Duration of HTTP requests in seconds",
+      labelNames: ["method", "route"] as const,
+      buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+      registers: [this.registry]
+    });
+
+    this.pdfGenerated = new Counter({
+      name: "pdf_generated_total",
+      help: "Number of PDFs generated",
+      labelNames: ["type"] as const,
       registers: [this.registry]
     });
 
@@ -68,6 +95,15 @@ export class MetricsService {
 
   markFailed() {
     this.jobsFailed.inc();
+  }
+
+  incHttp(method: string, route: string, status: number, durationSeconds: number) {
+    this.httpRequests.inc({ method, route, status: String(status) });
+    this.httpDuration.labels(method, route).observe(durationSeconds);
+  }
+
+  incPdf(type: "audit" | "letter") {
+    this.pdfGenerated.inc({ type });
   }
 
   async sampleQueueSizes() {
