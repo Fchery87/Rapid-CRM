@@ -80,6 +80,16 @@ async function seedReportDetails(reportId, variant = 1) {
       }
     });
   }
+
+  // Personal info per bureau (introduce small inconsistencies)
+  await prisma.personalInfo.createMany({
+    data: [
+      { creditReportId: reportId, bureau: "TU", name: "Alex Q. Doe", ssnLast4: "1234", dob: "1990-01-01", addressLine: "123 Main St", city: "Austin", state: "TX", postal: "78701" },
+      { creditReportId: reportId, bureau: "EX", name: "Alex Doe", ssnLast4: "1234", dob: "1990-01-01", addressLine: "123 Main Street", city: "Austin", state: "TX", postal: "78701" },
+      { creditReportId: reportId, bureau: "EQ", name: "Alex Q Doe", ssnLast4: "1234", dob: "1990-01-01", addressLine: "125 Main St", city: "Austin", state: "TX", postal: "78701" }
+    ],
+    skipDuplicates: true
+  });
 }
 
 async function main() {

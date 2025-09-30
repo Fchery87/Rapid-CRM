@@ -114,6 +114,24 @@ model PublicRecord {
   creditReport CreditReport @relation(fields: [creditReportId], references: [id])
 }
 
+model PersonalInfo {
+  id             String   @id @default(cuid())
+  creditReportId String
+  bureau         Bureau
+  name           String?
+  ssnLast4       String?
+  dob            String?
+  addressLine    String?
+  city           String?
+  state          String?
+  postal         String?
+  createdAt      DateTime @default(now())
+
+  creditReport CreditReport @relation(fields: [creditReportId], references: [id])
+
+  @@unique([creditReportId, bureau])
+}
+
 enum Bureau {
   TU
   EX

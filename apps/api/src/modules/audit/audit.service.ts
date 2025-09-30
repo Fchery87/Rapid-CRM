@@ -64,13 +64,12 @@ export class AuditService {
     const byBureau: { TU?: number; EX?: number; EQ?: number } = {};
     const bureaus: Array<"TU" | "EX" | "EQ"> = ["TU", "EX", "EQ"];
     for (const b of bureaus) {
-      const tForBureau = withLimits.filter((t) => Array.isArray(t.reportedBureaus) && t.reportedBureaus.includes(b));
+      const tForBureau = withLimits.filter((t) => Array.isArray((t as any).reportedBureaus) && (t as any).reportedBureaus.includes(b));
       if (tForBureau.length) {
         const bal = tForBureau.reduce((acc, t) => acc + (t.balance || 0), 0);
         const lim = tForBureau.reduce((acc, t) => acc + (t.creditLimit || 0), 0);
         byBureau[b] = lim > 0 ? Math.round((bal / lim) * 100) : 0;
       } else {
-        // Fallback only if bureau exists on the report
         const present = report.bureaus.some((br) => br.bureau === b);
         if (present) byBureau[b] = currentUtil;
       }
@@ -120,9 +119,48 @@ export class AuditService {
       }
     }
 
-    // Placeholders (no personal info table yet, no cross-bureau duplicates without bureau attribution)
+    // Personal info issues - compare across bureaus
+    const personalInfos = await this.prisma.personalInfo.findMany({ where: { creditReportId: report.id } });
     const personalInfoIssues: AuditDTO["personalInfoIssues"] = [];
+    if (personalInfos.length) {
+      const fields: Array<"name" | "ssnLast4" | "dob" | "addressLine" | "city" | "state" | "postal"> = [
+        "name",
+        "ssnLast4",
+        "dob",
+        "addressLine",
+        "city",
+        "state",
+        "postal"
+      ];
+      for (const f of fields) {
+        const values = new Map<string, Set<string>>();
+        for (const pi of personalInfos) {
+          const v = (pi as any)[f];
+          if (v) {
+            const key = String(v).trim().toLowerCase();
+            if (!values.has(key)) values.set(key, new Set());
+            values.get(key)!.add(pi.bureau);
+          }
+        }
+        if (values.size > 1) {
+          for (const [val] of values) {
+            personalInfoIssues.push({ field: String(f), value: val, risk: f === "ssnLast4" ? "high" : "medium" });
+          }
+        }
+      }
+    }
+
+    // Duplicates across bureaus: tradelines reported on multiple bureaus
     const duplicates: AuditDTO["duplicates"] = [];
+    for (const t of report.tradelines) {
+      const bureausFor = (t as any).reportedBureaus || [];
+      if (Array.isArray(bureausFor) && bureausFor.length > 1) {
+        duplicates.push({
+          description: `${t.creditorName} appears on multiple bureaus`,
+          bureaus: bureausFor as any
+        });
+      }
+    }
 
     return {
       id: report.id,
