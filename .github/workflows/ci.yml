@@ -4,6 +4,16 @@ on:
   push:
     branches: [ main ]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      run_audit_validation:
+        description: "Run self-hosted Audit API validation"
+        required: false
+        default: "false"
+      enable_metrics:
+        description: "Start Prometheus/Grafana stack during validation"
+        required: false
+        default: "false"
 
 jobs:
   build:
@@ -67,8 +77,9 @@ jobs:
         run: pnpm test:e2e
 
   audit-api-validation:
-    # Optional job - runs only if a self-hosted runner is available
-    runs-on: self-hosted
+    # Optional job - runs on a specifically labeled self-hosted runner
+    if: github.event_name == 'workflow_dispatch' && inputs.run_audit_validation == 'true'
+    runs-on: [self-hosted, audit]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -89,6 +100,10 @@ jobs:
 
       - name: Start infra (Docker Compose)
         run: docker compose up -d
+
+      - name: Start metrics stack (Prometheus + Grafana)
+        if: inputs.enable_metrics == 'true'
+        run: docker compose -f docker-compose.metrics.yml up -d
 
       - name: Migrate and seed
         run: |
@@ -117,6 +132,10 @@ jobs:
 
       - name: Run Audit API validation
         run: pnpm --filter @rapid/api test:audit:api
+
+      - name: Teardown metrics stack
+        if: always() && inputs.enable_metrics == 'true'
+        run: docker compose -f docker-compose.metrics.yml down -v
 
       - name: Teardown infra
         if: always()
