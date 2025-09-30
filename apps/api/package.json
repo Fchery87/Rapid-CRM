@@ -14,7 +14,8 @@
     "prisma:studio": "prisma studio",
     "postinstall": "prisma generate",
     "seed": "node scripts/seed.mjs",
-    "test:audit:local": "node scripts/test-audit.mjs"
+    "test:audit:local": "node scripts/test-audit.mjs",
+    "test:audit:api": "node scripts/test-audit-api.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.665.0",
