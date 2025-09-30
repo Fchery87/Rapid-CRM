@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(ANALYST)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum UserRole {
+  ADMIN
+  ANALYST
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reports CreditReport[]
+}
+
+model CreditReport {
+  id           String      @id @default(cuid())
+  accountId    String
+  vendor       String
+  reportDate   DateTime
+  rawObjectKey String      // S3 key
+  createdAt    DateTime    @default(now())
+
+  account Account @relation(fields: [accountId], references: [id])
+  bureaus BureauReport[]
+}
+
+model BureauReport {
+  id            String   @id @default(cuid())
+  creditReportId String
+  bureau        Bureau
+  score         Int?
+  createdAt     DateTime @default(now())
+
+  creditReport CreditReport @relation(fields: [creditReportId], references: [id])
+
+  @@unique([creditReportId, bureau])
+}
+
+enum Bureau {
+  TU
+  EX
+  EQ
+}
