@@ -52,4 +52,17 @@ export class S3Service {
     });
     return getSignedUrl(this.client, cmd, { expiresIn: expiresSeconds });
   }
+
+  async putObject(objectKey: string, body: Uint8Array | Buffer, contentType = "application/octet-stream") {
+    await this.ensureBucket();
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: objectKey,
+        Body: body,
+        ContentType: contentType
+      })
+    );
+    return { key: objectKey };
+  }
 }

@@ -109,6 +109,14 @@ jobs:
         if: inputs.enable_metrics == 'true'
         run: docker compose -f docker-compose.metrics.yml up -d
 
+      - name: Provision Grafana service account
+        if: inputs.enable_metrics == 'true'
+        env:
+          GRAFANA_URL: http://localhost:3001
+          GRAFANA_ADMIN_USER: admin
+          GRAFANA_ADMIN_PASSWORD: admin
+        run: node scripts/create-grafana-service-account.mjs
+
       - name: Migrate and seed
         run: |
           pnpm --filter @rapid/api prisma:migrate:dev
@@ -192,7 +200,11 @@ jobs:
           echo "API failed to start"
           exit 1
 
-      - name: Install Playwright Browsers
+      - name: Install Playwright Browsers for API
+        working-directory: apps/api
+        run: pnpm exec playwright install --with-deps
+
+      - name: Install Playwright Browsers for Web
         working-directory: apps/web
         run: pnpm exec playwright install --with-deps
 
@@ -212,17 +224,26 @@ jobs:
           echo "Web failed to start"
           exit 1
 
-      - name: Render PDF
-        working-directory: apps/web
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:4000/api
-        run: pnpm pdf:demo
+      - name: Request PDF generation via API
+        id: gen
+        run: |
+          REPORT_ID=$(curl -sSf http://localhost:4000/api/reports | jq -r '.[0].id')
+          echo "reportId=$REPORT_ID" >> $GITHUB_OUTPUT
+          RESULT=$(curl -sSf -X POST http://localhost:4000/api/pdfs/$REPORT_ID)
+          echo "$RESULT" > result.json
+          DOWNLOAD_URL=$(jq -r '.downloadUrl' result.json)
+          echo "downloadUrl=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
+
+      - name: Download PDF
+        run: |
+          mkdir -p artifacts
+          curl -sSfL "${{ steps.gen.outputs.downloadUrl }}" -o artifacts/audit-preview.pdf
 
       - name: Upload PDF artifact
         uses: actions/upload-artifact@v4
         with:
           name: audit-preview
-          path: apps/web/artifacts/audit-preview.pdf
+          path: artifacts/audit-preview.pdf
 
       - name: Teardown infra
         if: always()
