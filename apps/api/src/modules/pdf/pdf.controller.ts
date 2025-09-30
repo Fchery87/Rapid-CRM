@@ -1,9 +1,10 @@
-import { Controller, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { S3Service } from "../s3/s3.service";
 import { chromium } from "playwright";
 import { MetricsService } from "../metrics/metrics.service";
 import JSZip from "jszip";
+import { PdfWorker } from "./pdf.worker";
 
 const WEB_URL = process.env.WEB_URL || "http://localhost:3000";
 
@@ -50,7 +51,12 @@ async function renderPdfFromUrl(url: string, header = "RAPID", footer = "Generat
 
 @Controller("pdfs")
 export class PdfController {
-  constructor(private prisma: PrismaService, private s3: S3Service, private metrics: MetricsService) {}
+  constructor(
+    private prisma: PrismaService,
+    private s3: S3Service,
+    private metrics: MetricsService,
+    private pdfWorker: PdfWorker
+  ) {}
 
   @Post(":reportId")
   async generateAudit(@Param("reportId") reportId: string) {
@@ -114,5 +120,27 @@ export class PdfController {
     const zipUrl = await this.s3.presignGet(zipKey);
 
     return { ok: true, items: results, zipKey, zipUrl };
+  }
+
+  @Post("jobs")
+  async enqueueJob(
+    @Body()
+    body: {
+      type: "audit" | "letter" | "letters-batch";
+      reportId: string;
+      bureau?: "TU" | "EX" | "EQ";
+      items?: any[];
+      branding?: { header?: string; footer?: string; logoUrl?: string };
+      callbackUrl?: string;
+      bureaus?: Array<"TU" | "EX" | "EQ">;
+    }
+  ) {
+    const id = await this.pdfWorker.enqueue(body);
+    return { ok: true, jobId: id };
+  }
+
+  @Get("jobs/:id")
+  async getJob(@Param("id") id: string) {
+    return this.pdfWorker.getStatus(id);
   }
 }
