@@ -1,3 +1,5 @@
+import PrintLayout from "@/components/PrintLayout";
+
 type LetterData = {
   reportId: string;
   bureau?: string;
@@ -24,18 +26,17 @@ async function getLetterData(id: string, bureau?: string): Promise<LetterData> {
 export default async function LetterPage({ params, searchParams }: { params: { id: string }, searchParams: { bureau?: string } }) {
   const data = await getLetterData(params.id, searchParams?.bureau);
   return (
-    <div className="prose max-w-none p-6">
-      <header className="mb-6">
-        <h1 className="text-xl font-semibold">Dispute Letter</h1>
+    <PrintLayout title="Dispute Letter" header="Rapid — Dispute Letter" footer={`Report ${data.reportId}${data.bureau ? ` — ${data.bureau}` : ""}`}>
+      <section className="prose max-w-none">
         <p className="text-sm text-gray-600">Date: {data.date}</p>
         <p className="text-sm text-gray-600">To: {data.recipient}</p>
-      </header>
-      <section>
-        <p>{data.body}</p>
+        <div className="mt-4">
+          <p>{data.body}</p>
+        </div>
+        <div className="mt-12 text-sm text-gray-600">
+          Report ID: {data.reportId} {data.bureau ? `· Bureau: ${data.bureau}` : ""}
+        </div>
       </section>
-      <footer className="mt-12 text-sm text-gray-600">
-        Report ID: {data.reportId} {data.bureau ? `· Bureau: ${data.bureau}` : ""}
-      </footer>
-    </div>
+    </PrintLayout>
   );
 }

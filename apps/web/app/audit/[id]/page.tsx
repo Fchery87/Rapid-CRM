@@ -1,3 +1,5 @@
+import PrintLayout from "@/components/PrintLayout";
+
 type Audit = {
   id: string;
   accountId: string;
@@ -36,14 +38,7 @@ export default async function AuditPage({ params }: { params: { id: string } }) 
   const scores = data.kpis.scores;
 
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="text-xl font-semibold">Simple Audit</h1>
-        <p className="text-sm text-gray-600">
-          Vendor: {data.vendor} · Report date: {new Date(data.reportDate).toLocaleDateString()}
-        </p>
-      </header>
-
+    <PrintLayout title="Simple Audit" header="Rapid — Simple Audit" footer={`Report ${data.id} — ${new Date(data.reportDate).toLocaleDateString()}`}>
       <section aria-labelledby="kpis-title">
         <h2 id="kpis-title" className="text-lg font-medium">Summary KPIs</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
@@ -151,6 +146,6 @@ export default async function AuditPage({ params }: { params: { id: string } }) 
           </ul>
         )}
       </section>
-    </div>
+    </PrintLayout>
   );
 }

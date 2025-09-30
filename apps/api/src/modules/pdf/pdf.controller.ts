@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { S3Service } from "../s3/s3.service";
 import { chromium } from "playwright";
 import { MetricsService } from "../metrics/metrics.service";
+import JSZip from "jszip";
 
 const WEB_URL = process.env.WEB_URL || "http://localhost:3000";
 
@@ -83,5 +84,35 @@ export class PdfController {
     const downloadUrl = await this.s3.presignGet(key);
     this.metrics.incPdf("letter");
     return { ok: true, key, downloadUrl };
+  }
+
+  @Post("letters/batch/:reportId")
+  async generateLettersBatch(@Param("reportId") reportId: string) {
+    const report = await this.prisma.creditReport.findUnique({ where: { id: reportId }, include: { bureaus: true } });
+    if (!report) {
+      throw new Error("Report not found");
+    }
+    const bureaus = (report.bureaus.map((b) => b.bureau) as Array<"TU" | "EX" | "EQ">) || ["TU", "EX", "EQ"];
+
+    const zip = new JSZip();
+    const results: Array<{ bureau: string; key: string; downloadUrl: string }> = [];
+
+    for (const b of bureaus) {
+      const url = `${WEB_URL}/letter/${reportId}?bureau=${encodeURIComponent(b)}`;
+      const pdf = await renderPdfFromUrl(url, "Rapid — Dispute Letter", `Dispute Letter — ${b}`);
+      const key = `pdfs/letter-${reportId}-${b}.pdf`;
+      await this.s3.putObject(key, pdf, "application/pdf");
+      const downloadUrl = await this.s3.presignGet(key);
+      results.push({ bureau: b, key, downloadUrl });
+      zip.file(`letter-${reportId}-${b}.pdf`, pdf);
+      this.metrics.incPdf("letter");
+    }
+
+    const zipBuffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+    const zipKey = `pdfs/letters-${reportId}.zip`;
+    await this.s3.putObject(zipKey, zipBuffer, "application/zip");
+    const zipUrl = await this.s3.presignGet(zipKey);
+
+    return { ok: true, items: results, zipKey, zipUrl };
   }
 }
