@@ -8,6 +8,77 @@ function daysAgo(n) {
   return d;
 }
 
+async function seedReportDetails(reportId, variant = 1) {
+  // Tradelines: include a couple of negative items and utilization placeholders
+  await prisma.tradeline.create({
+    data: {
+      creditReportId: reportId,
+      creditorName: "Capital One",
+      balance: 1200,
+      creditLimit: 3000,
+      utilization: 40,
+      isNegative: variant === 1,
+      issues: variant === 1 ? ["late_payment"] : [],
+      openedDate: daysAgo(400)
+    }
+  });
+  await prisma.tradeline.create({
+    data: {
+      creditReportId: reportId,
+      creditorName: "Chase",
+      balance: 50,
+      creditLimit: 5000,
+      utilization: 1,
+      isNegative: false,
+      issues: [],
+      openedDate: daysAgo(800)
+    }
+  });
+  await prisma.tradeline.create({
+    data: {
+      creditReportId: reportId,
+      creditorName: "Discover",
+      balance: 2800,
+      creditLimit: 3000,
+      utilization: 93,
+      isNegative: true,
+      issues: ["high_utilization"],
+      openedDate: daysAgo(200)
+    }
+  });
+
+  // Inquiries
+  await prisma.inquiry.create({
+    data: {
+      creditReportId: reportId,
+      name: "Car Loan Co",
+      date: daysAgo(15),
+      hard: true
+    }
+  });
+  await prisma.inquiry.create({
+    data: {
+      creditReportId: reportId,
+      name: "Credit Card Offer",
+      date: daysAgo(30),
+      hard: false
+    }
+  });
+
+  // Public records
+  if (variant === 1) {
+    await prisma.publicRecord.create({
+      data: {
+        creditReportId: reportId,
+        kind: "tax_lien",
+        description: "County tax lien",
+        date: daysAgo(900),
+        isNegative: true
+      }
+    });
+  }
+}
+
 async function main() {
   console.log("Seeding demo data...");
 
@@ -50,6 +121,9 @@ async function main() {
       }
     }
   });
+
+  await seedReportDetails(report1.id, 1);
+  await seedReportDetails(report2.id, 2);
 
   console.log("Seed complete.", { account: account.name, reports: [report1.id, report2.id] });
 }

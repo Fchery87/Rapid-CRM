@@ -60,6 +60,9 @@ model CreditReport {
 
   account Account @relation(fields: [accountId], references: [id])
   bureaus BureauReport[]
+  tradelines Tradeline[]
+  inquiries Inquiry[]
+  publicRecords PublicRecord[]
 }
 
 model BureauReport {
@@ -72,6 +75,42 @@ model BureauReport {
   creditReport CreditReport @relation(fields: [creditReportId], references: [id])
 
   @@unique([creditReportId, bureau])
+}
+
+model Tradeline {
+  id             String   @id @default(cuid())
+  creditReportId String
+  creditorName   String
+  balance        Int?
+  creditLimit    Int?
+  utilization    Float?   // percentage 0-100
+  isNegative     Boolean  @default(false)
+  issues         String[] // e.g., ["late_payment", "charge_off"]
+  openedDate     DateTime?
+  closedDate     DateTime?
+
+  creditReport CreditReport @relation(fields: [creditReportId], references: [id])
+}
+
+model Inquiry {
+  id             String   @id @default(cuid())
+  creditReportId String
+  name           String
+  date           DateTime?
+  hard           Boolean  @default(true)
+
+  creditReport CreditReport @relation(fields: [creditReportId], references: [id])
+}
+
+model PublicRecord {
+  id             String   @id @default(cuid())
+  creditReportId String
+  kind           String    // e.g., "bankruptcy", "tax_lien"
+  description    String?
+  date           DateTime?
+  isNegative     Boolean   @default(true)
+
+  creditReport CreditReport @relation(fields: [creditReportId], references: [id])
 }
 
 enum Bureau {

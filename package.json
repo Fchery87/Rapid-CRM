@@ -9,6 +9,7 @@
     "start": "pnpm -r start",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "demo:up": "docker compose up -d && pnpm --filter @rapid/api prisma:migrate:dev && pnpm --filter @rapid/api seed"
   }
 }
