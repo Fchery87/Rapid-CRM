@@ -32,15 +32,22 @@ model Account {
 }
 
 model Upload {
-  id           String   @id @default(cuid())
+  id           String        @id @default(cuid())
   accountId    String
-  objectKey    String   @unique
+  objectKey    String        @unique
   originalName String
   contentType  String
   size         Int
-  createdAt    DateTime @default(now())
+  status       UploadStatus  @default(PENDING)
+  confirmedAt  DateTime?
+  createdAt    DateTime      @default(now())
 
   account Account @relation(fields: [accountId], references: [id])
+}
+
+enum UploadStatus {
+  PENDING
+  CONFIRMED
 }
 
 model CreditReport {

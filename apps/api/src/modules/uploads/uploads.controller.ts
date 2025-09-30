@@ -8,6 +8,10 @@ type SignUploadDto = {
   size: number;
 };
 
+type ConfirmUploadDto = {
+  objectKey: string;
+};
+
 @Controller("uploads")
 export class UploadsController {
   constructor(private readonly uploads: UploadsService) {}
@@ -23,6 +27,13 @@ export class UploadsController {
       throw new Error("File too large");
     }
     return this.uploads.signUpload(body);
+  }
+
+  @Post("confirm")
+  @HttpCode(200)
+  async confirm(@Body() body: ConfirmUploadDto) {
+    if (!body.objectKey) throw new Error("Missing objectKey");
+    return this.uploads.confirmUpload(body.objectKey);
   }
 
   @Get("account/:accountId")

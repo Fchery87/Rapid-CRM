@@ -72,9 +72,18 @@ export default function UploadPage() {
         })
       });
       if (!signRes.ok) throw new Error("Failed to sign upload");
-      const { url } = await signRes.json();
+      const { url, key } = await signRes.json();
 
       await putWithProgress(url, file, setProgress);
+
+      // Confirm upload after successful PUT
+      const confirmRes = await fetch(`${API_URL}/uploads/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ objectKey: key })
+      });
+      if (!confirmRes.ok) throw new Error("Failed to confirm upload");
+
       setMessage("Upload complete.");
       await loadUploads(acc.id);
     } catch (err: any) {
