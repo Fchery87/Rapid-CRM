@@ -33,28 +33,77 @@ export class AuditService {
   async getAudit(reportId: string): Promise<AuditDTO> {
     const report = await this.prisma.creditReport.findUnique({
       where: { id: reportId },
-      include: { account: true, bureaus: true }
+      include: { account: true, bureaus: true, tradelines: true, inquiries: true, publicRecords: true }
     });
     if (!report) throw new NotFoundException("Report not found");
 
-    // For now, use whatever data exists; scores likely null in V1 stubs
+    // Scores from BureauReport
     const scores: Record<string, number | null | undefined> = {};
     for (const b of report.bureaus) {
       scores[b.bureau] = b.score ?? null;
     }
 
-    // Placeholders for counts until normalized tables exist
+    // KPI counts from normalized tables
     const kpis = {
       scores: { TU: scores["TU"] ?? null, EX: scores["EX"] ?? null, EQ: scores["EQ"] ?? null },
-      counts: { tradelines: 0, inquiries: 0, publicRecords: 0 }
+      counts: {
+        tradelines: report.tradelines.length,
+        inquiries: report.inquiries.length,
+        publicRecords: report.publicRecords.length
+      }
     };
 
-    // Placeholder negative items and utilization; will be populated once parser normalizes data
-    const negativeItems: AuditDTO["negativeItems"] = [];
-    const utilization: AuditDTO["utilization"] = {
-      overall: { current: 0, target: 10, delta: -10 },
-      byBureau: { TU: 0, EX: 0, EQ: 0 }
+    // Utilization computation
+    const withLimits = report.tradelines.filter((t) => t.balance != null && t.creditLimit != null && t.creditLimit! > 0);
+    const totalBalance = withLimits.reduce((acc, t) => acc + (t.balance || 0), 0);
+    const totalLimit = withLimits.reduce((acc, t) => acc + (t.creditLimit || 0), 0);
+    const currentUtil = totalLimit > 0 ? Math.round((totalBalance / totalLimit) * 100) : 0;
+    const target = 10;
+    const utilization = {
+      overall: { current: currentUtil, target, delta: currentUtil - target },
+      byBureau: {} as { TU?: number; EX?: number; EQ?: number } // per-bureau requires bureau attribution in normalized data
     };
+
+    // Negative items from tradelines and public records
+    const negativeItems: AuditDTO["negativeItems"] = [];
+
+    for (const t of report.tradelines) {
+      const flags: string[] = [];
+      const issues = t.issues || [];
+      if (issues.includes("high_utilization") || (t.utilization != null && t.utilization >= 90)) flags.push("high_utilization");
+      if (issues.includes("late_payment")) flags.push("late_payment");
+      if (issues.includes("charge_off")) flags.push("charge_off");
+
+      if (t.isNegative || flags.length > 0) {
+        let priority: "P1" | "P2" | "P3" = "P3";
+        if (flags.includes("charge_off") || flags.includes("high_utilization")) priority = "P1";
+        else if (flags.includes("late_payment")) priority = "P2";
+
+        negativeItems.push({
+          id: `tl_${t.id}`,
+          account: t.creditorName,
+          issue: issues.length ? issues.join(", ") : "negative tradeline",
+          priority,
+          flags,
+          bureauDates: {}
+        });
+      }
+    }
+
+    for (const pr of report.publicRecords) {
+      if (pr.isNegative) {
+        negativeItems.push({
+          id: `pr_${pr.id}`,
+          account: pr.kind,
+          issue: pr.description || pr.kind,
+          priority: "P1",
+          flags: ["public_record"],
+          bureauDates: {}
+        });
+      }
+    }
+
+    // Placeholders (no personal info table yet, no cross-bureau duplicates without bureau attribution)
     const personalInfoIssues: AuditDTO["personalInfoIssues"] = [];
     const duplicates: AuditDTO["duplicates"] = [];
 

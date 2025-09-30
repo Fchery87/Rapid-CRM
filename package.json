@@ -10,6 +10,8 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "demo:up": "docker compose up -d && pnpm --filter @rapid/api prisma:migrate:dev && pnpm --filter @rapid/api seed"
+    "demo:up": "docker compose up -d && pnpm --filter @rapid/api prisma:migrate:dev && pnpm --filter @rapid/api seed",
+    "demo:reset": "pnpm --filter @rapid/api prisma:migrate:reset --force && pnpm --filter @rapid/api prisma:migrate:dev && pnpm --filter @rapid/api seed",
+    "demo:down": "docker compose down -v"
   }
 }
