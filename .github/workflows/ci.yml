@@ -14,6 +14,10 @@ on:
         description: "Start Prometheus/Grafana stack during validation"
         required: false
         default: "false"
+      run_pdf_preview:
+        description: "Run self-hosted Playwright PDF preview job"
+        required: false
+        default: "false"
 
 jobs:
   build:
@@ -136,6 +140,89 @@ jobs:
       - name: Teardown metrics stack
         if: always() && inputs.enable_metrics == 'true'
         run: docker compose -f docker-compose.metrics.yml down -v
+
+      - name: Teardown infra
+        if: always()
+        run: docker compose down -v
+
+  pdf-preview:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_pdf_preview == 'true'
+    runs-on: [self-hosted, pdf]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.10.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install
+        run: pnpm install
+
+      - name: Start infra (Docker Compose)
+        run: docker compose up -d
+
+      - name: Migrate and seed
+        run: |
+          pnpm --filter @rapid/api prisma:migrate:dev
+          pnpm --filter @rapid/api seed
+
+      - name: Build and start API
+        working-directory: apps/api
+        run: |
+          pnpm build
+          node dist/main.js &
+      
+      - name: Wait for API
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:4000/api/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to start"
+          exit 1
+
+      - name: Install Playwright Browsers
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps
+
+      - name: Start Web
+        working-directory: apps/web
+        run: pnpm dev &
+      
+      - name: Wait for Web
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:3000 > /dev/null; then
+              echo "Web is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Web failed to start"
+          exit 1
+
+      - name: Render PDF
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000/api
+        run: pnpm pdf:demo
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-preview
+          path: apps/web/artifacts/audit-preview.pdf
 
       - name: Teardown infra
         if: always()
