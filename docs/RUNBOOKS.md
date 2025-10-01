@@ -15,6 +15,15 @@
   - `cd services/parser && python -m venv .venv && source .venv/bin/activate`
   - `pip install -r requirements.txt && uvicorn main:app --reload --port 8001`
 
+## Audit UI
+
+See docs/audit-ui.md for end-to-end data flow, local test instructions, and a11y/perf expectations.
+
+Quick start:
+- Go to http://localhost:3000/reports and open an audit.
+- Run a11y E2E (Playwright + axe): `cd apps/web && pnpm exec playwright install --with-deps && pnpm test:e2e`
+- API unit tests for AuditService: `pnpm --filter @rapid/api test:audit:unit`
+
 ## Health Checks
 
 - API: http://localhost:4000/api/health and /api/health/db
@@ -27,8 +36,13 @@
 - Typecheck: TypeScript across workspaces
 - Build: Next.js, NestJS
 - Tests:
-  - Unit: Vitest (web)
-  - A11y E2E: Playwright + axe on /login
+  - Unit tests (workspace)
+  - A11y E2E: Playwright + axe on /login and /audit
+  - Storybook a11y via test-storybook
+  - Perf: TTFB check for /audit
+- Optional self-hosted jobs:
+  - Audit API validation (Docker infra + migrations + seed)
+  - PDF preview artifact
 
 ## Common Issues
 

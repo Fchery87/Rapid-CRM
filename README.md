@@ -43,6 +43,14 @@ Prerequisites:
 - packages/ui — Shared UI components
 - docs — PRD, PRP, TASKS
 
+## Audit UI – Developer Guide
+
+See docs/audit-ui.md for:
+- End-to-end data flow (upload → parser → ingestion → /audit)
+- Local run and test instructions (unit, a11y, visual, Storybook)
+- Accessibility and performance expectations
+- Practical task checklist and acceptance criteria
+
 ## Next Steps (per TASKS.md)
 
 - Epic 0: add design tokens and auth skeleton; CI a11y gate for /login
