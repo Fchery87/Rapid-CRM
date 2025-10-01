@@ -67,6 +67,7 @@ export default async function AuditPage({ params }: { params: { id: string } }) 
         ) : (
           <div className="overflow-auto">
             <table className="min-w-full border mt-2" role="table">
+              <caption className="sr-only">Negative items impacting credit</caption>
               <thead className="bg-gray-50">
                 <tr>
                   <th scope="col" className="text-left p-2 border">Account</th>

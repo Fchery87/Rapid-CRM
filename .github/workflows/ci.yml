@@ -73,12 +73,42 @@ jobs:
         working-directory: apps/web
         run: pnpm exec playwright install --with-deps
 
+      - name: Start infra (Docker Compose) for API
+        run: docker compose up -d
+
+      - name: Migrate and seed API DB
+        run: |
+          pnpm --filter @rapid/api prisma:migrate:dev
+          pnpm --filter @rapid/api seed
+
+      - name: Build and start API
+        working-directory: apps/api
+        run: |
+          pnpm build
+          node dist/main.js &
+
+      - name: Wait for API
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:4000/api/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to start"
+          exit 1
+
       - name: Unit tests
         run: pnpm -w test
 
-      - name: A11y E2E tests (/login)
+      - name: Playwright E2E tests (includes /login and /audit a11y)
         working-directory: apps/web
         run: pnpm test:e2e
+
+      - name: Teardown infra
+        if: always()
+        run: docker compose down -v
 
   storybook-a11y:
     runs-on: ubuntu-latest
