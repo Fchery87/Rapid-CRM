@@ -1,5 +1,6 @@
-import { Body, Controller, Get, HttpCode, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from "@nestjs/common";
 import { UploadsService } from "./uploads.service";
+import { JwtAuthGuard } from "../auth/jwt.guard";
 
 type SignUploadDto = {
   accountName: string;
@@ -12,6 +13,7 @@ type ConfirmUploadDto = {
   objectKey: string;
 };
 
+@UseGuards(JwtAuthGuard)
 @Controller("uploads")
 export class UploadsController {
   constructor(private readonly uploads: UploadsService) {}

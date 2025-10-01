@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, Post } from "@nestjs/common";
+import { AuthService } from "./auth.service";
 
 type LoginDto = {
   email: string;
@@ -7,14 +8,13 @@ type LoginDto = {
 
 @Controller("auth")
 export class AuthController {
+  constructor(private auth: AuthService) {}
+
   @Post("login")
   @HttpCode(200)
-  login(@Body() body: LoginDto) {
-    // Skeleton only: no real authentication; returns a placeholder token
-    const { email } = body;
-    return {
-      token: "dev-token",
-      user: { email }
-    };
+  async login(@Body() body: LoginDto) {
+    const user = await this.auth.validateUser(body.email, body.password);
+    const token = await this.auth.sign(user);
+    return { token, user: { email: user.email, role: user.role } };
   }
 }

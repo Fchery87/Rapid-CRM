@@ -1,0 +1,28 @@
+export const tokens = {
+  colors: {
+    brand: {
+      50: "#ECFDF5",
+      100: "#D1FAE5",
+      200: "#A7F3D0",
+      300: "#6EE7B7",
+      400: "#34D399",
+      500: "#10B981",
+      600: "#0EA5A0",
+      700: "#0F766E",
+      800: "#115E59",
+      900: "#134E4A"
+    }
+  },
+  spacing: [1, 2, 3, 4, 6, 8, 12].map((s) => `${0.25 * s}rem`),
+  typography: {
+    fontStack: 'system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", Arial, sans-serif',
+    sizes: {
+      xs: "0.75rem",
+      sm: "0.875rem",
+      base: "1rem",
+      lg: "1.125rem",
+      xl: "1.25rem",
+      "2xl": "1.5rem"
+    }
+  }
+} as const;
