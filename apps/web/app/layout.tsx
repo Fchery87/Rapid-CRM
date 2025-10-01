@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="font-semibold text-brand-700">Rapid-CRM</div>
           </div>
         </header>
-        <main id="main" className="mx-auto max-w-md px-4 py-8">
+        <main id="main" role="main" className="mx-auto max-w-md px-4 py-8">
           {children}
         </main>
       </body>
