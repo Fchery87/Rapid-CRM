@@ -3,10 +3,14 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./modules/app.module";
 import { MetricsService } from "./modules/metrics/metrics.service";
 import { HttpMetricsInterceptor } from "./modules/metrics/http-metrics.interceptor";
+import { RequestIdInterceptor } from "./modules/metrics/request-id.interceptor";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix("api");
+
+  // attach Request-ID propagation/interceptor
+  app.useGlobalInterceptors(new RequestIdInterceptor());
 
   // attach HTTP metrics interceptor
   const metrics = app.get(MetricsService);
