@@ -6,6 +6,7 @@ import { MetricsService } from "../metrics/metrics.service";
 import JSZip from "jszip";
 import { PdfWorker } from "./pdf.worker";
 import { ApiKeyGuard } from "../auth/api-key.guard";
+import { JwtAuthGuard } from "../auth/jwt.guard";
 
 const WEB_URL = process.env.WEB_URL || "http://localhost:3000";
 
@@ -50,7 +51,7 @@ async function renderPdfFromUrl(url: string, header = "RAPID", footer = "Generat
   return pdfBuffer;
 }
 
-@UseGuards(ApiKeyGuard)
+@UseGuards(JwtAuthGuard, ApiKeyGuard)
 @Controller("pdfs")
 export class PdfController {
   constructor(
