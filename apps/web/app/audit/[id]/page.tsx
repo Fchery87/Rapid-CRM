@@ -25,16 +25,10 @@ type Audit = {
   duplicates: Array<{ description: string; bureaus: ("TU" | "EX" | "EQ")[] }>;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+import { apiGet } from "@/src/lib/api";
 
 async function getAudit(id: string): Promise<Audit> {
-  const requestId = (typeof crypto !== "undefined" && "randomUUID" in crypto) ? (crypto as any).randomUUID() : `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const res = await fetch(`${API_URL}/audit/${id}`, {
-    next: { revalidate: 0 },
-    headers: { "X-Request-ID": requestId }
-  });
-  if (!res.ok) throw new Error("Failed to load audit");
-  return res.json();
+  return apiGet(`/audit/${id}`);
 }
 
 export default async function AuditPage({ params }: { params: { id: string } }) {

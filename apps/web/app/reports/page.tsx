@@ -1,11 +1,8 @@
 import Link from "next/link";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+import { apiGet } from "@/src/lib/api";
 
 async function getReports() {
-  const res = await fetch(`${API_URL}/reports`, { next: { revalidate: 0 } });
-  if (!res.ok) throw new Error("Failed to load reports");
-  return res.json();
+  return apiGet("/reports");
 }
 
 export default async function ReportsPage() {
