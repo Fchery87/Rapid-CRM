@@ -29,6 +29,7 @@ The Audit UI renders normalized credit report data that flows through the system
 
 Notes:
 - Request correlation: the web sends X-Request-ID which the API echoes back; use this for troubleshooting in logs/metrics.
+- API access from the web is centralized through a server proxy at `/api/proxy/...` which injects the JWT and X-Request-ID. Prefer using the helper functions in `apps/web/src/lib/api.ts`.
 
 ## Run Locally
 
