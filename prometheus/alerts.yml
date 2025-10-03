@@ -1,0 +1,21 @@
+groups:
+  - name: queue_and_api_alerts
+    interval: 15s
+    rules:
+      - alert: ParseJobFailuresHigh
+        expr: increase(parse_jobs_failed_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "BullMQ parse job failures detected"
+          description: "There were failures in the last 5 minutes."
+
+      - alert: ApiLatencyHighP99
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API latency (p99 > 2s)"
+          description: "API 99th percentile latency exceeded 2 seconds over the last 10 minutes."

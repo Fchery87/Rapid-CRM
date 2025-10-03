@@ -1,0 +1,17 @@
+{
+  "name": "rapid-crm-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.10.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "start": "pnpm -r start",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "demo:up": "docker compose up -d && pnpm --filter @rapid/api prisma:migrate:dev && pnpm --filter @rapid/api seed",
+    "demo:reset": "pnpm --filter @rapid/api prisma:migrate:reset --force && pnpm --filter @rapid/api prisma:migrate:dev && pnpm --filter @rapid/api seed",
+    "demo:down": "docker compose down -v"
+  }
+}

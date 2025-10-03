@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 5s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: "api"
+    metrics_path: /api/metrics/public
+    static_configs:
+      - targets: ["host.docker.internal:4000"]

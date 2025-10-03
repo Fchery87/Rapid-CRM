@@ -1,0 +1,55 @@
+{
+  "title": "API Overview",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "HTTP Request Rate (req/s)",
+      "targets": [
+        { "expr": "sum(rate(http_requests_total[1m]))" }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 6 }
+    },
+    {
+      "type": "graph",
+      "title": "HTTP Requests by Route",
+      "targets": [
+        { "expr": "sum(rate(http_requests_total[1m])) by (route)" }
+      ],
+      "legend": { "show": true },
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 6 }
+    },
+    {
+      "type": "graph",
+      "title": "HTTP Duration p50/p90/p99",
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route))" },
+        { "expr": "histogram_quantile(0.9, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route))" },
+        { "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route))" }
+      ],
+      "legend": { "show": true },
+      "gridPos": { "x": 0, "y": 6, "w": 24, "h": 8 }
+    },
+    {
+      "type": "stat",
+      "title": "PDFs Generated (Audit)",
+      "targets": [{ "expr": "sum(increase(pdf_generated_total{type=\"audit\"}[1h]))" }],
+      "gridPos": { "x": 0, "y": 14, "w": 8, "h": 4 }
+    },
+    {
+      "type": "stat",
+      "title": "PDFs Generated (Letter)",
+      "targets": [{ "expr": "sum(increase(pdf_generated_total{type=\"letter\"}[1h]))" }],
+      "gridPos": { "x": 8, "y": 14, "w": 8, "h": 4 }
+    },
+    {
+      "type": "graph",
+      "title": "PDFs Generated Over Time",
+      "targets": [{ "expr": "sum(rate(pdf_generated_total[5m])) by (type)" }],
+      "legend": { "show": true },
+      "gridPos": { "x": 16, "y": 14, "w": 8, "h": 6 }
+    }
+  ],
+  "schemaVersion": 38,
+  "version": 1,
+  "editable": true
+}

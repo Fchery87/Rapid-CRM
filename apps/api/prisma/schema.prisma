@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(ANALYST)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum UserRole {
+  ADMIN
+  ANALYST
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reports  CreditReport[]
+  uploads  Upload[]
+}
+
+model Upload {
+  id           String        @id @default(cuid())
+  accountId    String
+  objectKey    String        @unique
+  originalName String
+  contentType  String
+  size         Int
+  status       UploadStatus  @default(PENDING)
+  confirmedAt  DateTime?
+  createdAt    DateTime      @default(now())
+
+  account Account @relation(fields: [accountId], references: [id])
+}
+
+enum UploadStatus {
+  PENDING
+  CONFIRMED
+}
+
+model CreditReport {
+  id           String      @id @default(cuid())
+  accountId    String
+  vendor       String
+  reportDate   DateTime
+  rawObjectKey String      // S3 key
+  createdAt    DateTime    @default(now())
+
+  account Account @relation(fields: [accountId], references: [id])
+  bureaus BureauReport[]
+  tradelines Tradeline[]
+  inquiries Inquiry[]
+  publicRecords PublicRecord[]
+}
+
+model BureauReport {
+  id            String   @id @default(cuid())
+  creditReportId String
+  bureau        Bureau
+  score         Int?
+  createdAt     DateTime @default(now())
+
+  creditReport CreditReport @relation(fields: [creditReportId], references: [id])
+
+  @@unique([creditReportId, bureau])
+}
+
+model Tradeline {
+  id               String   @id @default(cuid())
+  creditReportId   String
+  creditorName     String
+  balance          Int?
+  creditLimit      Int?
+  utilization      Float?   // percentage 0-100
+  isNegative       Boolean  @default(false)
+  issues           String[] // e.g., ["late_payment", "charge_off"]
+  reportedBureaus  Bureau[] // bureaus that report this tradeline
+  openedDate       DateTime?
+  closedDate       DateTime?
+
+  creditReport CreditReport @relation(fields: [creditReportId], references: [id])
+}
+
+model Inquiry {
+  id             String   @id @default(cuid())
+  creditReportId String
+  name           String
+  date           DateTime?
+  hard           Boolean  @default(true)
+
+  creditReport CreditReport @relation(fields: [creditReportId], references: [id])
+}
+
+model PublicRecord {
+  id             String   @id @default(cuid())
+  creditReportId String
+  kind           String    // e.g., "bankruptcy", "tax_lien"
+  description    String?
+  date           DateTime?
+  isNegative     Boolean   @default(true)
+
+  creditReport CreditReport @relation(fields: [creditReportId], references: [id])
+}
+
+model PersonalInfo {
+  id             String   @id @default(cuid())
+  creditReportId String
+  bureau         Bureau
+  name           String?
+  ssnLast4       String?
+  dob            String?
+  addressLine    String?
+  city           String?
+  state          String?
+  postal         String?
+  createdAt      DateTime @default(now())
+
+  creditReport CreditReport @relation(fields: [creditReportId], references: [id])
+
+  @@unique([creditReportId, bureau])
+}
+
+enum Bureau {
+  TU
+  EX
+  EQ
+}
+
+enum PdfType {
+  AUDIT
+  LETTER
+  LETTERS_BATCH
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model PdfJob {
+  id          String     @id @default(cuid())
+  bullId      String?    @unique
+  type        PdfType
+  reportId    String
+  bureau      Bureau?
+  status      JobStatus  @default(QUEUED)
+  payload     Json?
+  resultKey   String?
+  zipKey      String?
+  callbackUrl String?
+  error       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}

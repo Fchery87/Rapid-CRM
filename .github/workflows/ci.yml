@@ -1,0 +1,314 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_audit_validation:
+        description: "Run self-hosted Audit API validation"
+        required: false
+        default: "false"
+      enable_metrics:
+        description: "Start Prometheus/Grafana stack during validation"
+        required: false
+        default: "false"
+      run_pdf_preview:
+        description: "Run self-hosted Playwright PDF preview job"
+        required: false
+        default: "false"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.10.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install
+        run: pnpm install
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.10.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install
+        run: pnpm install
+
+      - name: Install Playwright Browsers
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps
+
+      - name: Start infra (Docker Compose) for API
+        run: docker compose up -d
+
+      - name: Migrate and seed API DB
+        run: |
+          pnpm --filter @rapid/api prisma:migrate:dev
+          pnpm --filter @rapid/api seed
+
+      - name: Build and start API
+        working-directory: apps/api
+        run: |
+          pnpm build
+          node dist/main.js &
+
+      - name: Wait for API
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:4000/api/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to start"
+          exit 1
+
+      - name: Unit tests
+        run: pnpm -w test
+
+      - name: Playwright E2E tests (includes /login and /audit a11y)
+        working-directory: apps/web
+        run: pnpm test:e2e
+
+      - name: Teardown infra
+        if: always()
+        run: docker compose down -v
+
+  storybook-a11y:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.10.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install
+        run: pnpm install
+
+      - name: Build Storybook
+        working-directory: apps/web
+        run: pnpm build-storybook
+
+      - name: Serve Storybook
+        working-directory: apps/web
+        run: npx http-server ./storybook-static -p 6007 &
+
+      - name: Run Storybook a11y tests
+        working-directory: apps/web
+        env:
+          STORYBOOK_URL: http://localhost:6007
+        run: pnpm test-storybook
+
+  audit-api-validation:
+    # Optional job - runs on a specifically labeled self-hosted runner
+    if: github.event_name == 'workflow_dispatch' && inputs.run_audit_validation == 'true'
+    runs-on: [self-hosted, audit]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.10.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install
+        run: pnpm install
+
+      - name: Start infra (Docker Compose)
+        run: docker compose up -d
+
+      - name: Start metrics stack (Prometheus + Grafana)
+        if: inputs.enable_metrics == 'true'
+        run: docker compose -f docker-compose.metrics.yml up -d
+
+      - name: Provision Grafana service account
+        if: inputs.enable_metrics == 'true'
+        env:
+          GRAFANA_URL: http://localhost:3001
+          GRAFANA_ADMIN_USER: admin
+          GRAFANA_ADMIN_PASSWORD: admin
+        run: node scripts/create-grafana-service-account.mjs
+
+      - name: Migrate and seed
+        run: |
+          pnpm --filter @rapid/api prisma:migrate:dev
+          pnpm --filter @rapid/api seed
+
+      - name: Build API
+        working-directory: apps/api
+        run: pnpm build
+
+      - name: Start API background
+        working-directory: apps/api
+        run: node dist/main.js &
+      
+      - name: Wait for API
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:4000/api/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to start"
+          exit 1
+
+      - name: Run Audit API validation
+        run: pnpm --filter @rapid/api test:audit:api
+
+      - name: Teardown metrics stack
+        if: always() && inputs.enable_metrics == 'true'
+        run: docker compose -f docker-compose.metrics.yml down -v
+
+      - name: Teardown infra
+        if: always()
+        run: docker compose down -v
+
+  pdf-preview:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_pdf_preview == 'true'
+    runs-on: [self-hosted, pdf]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.10.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install
+        run: pnpm install
+
+      - name: Start infra (Docker Compose)
+        run: docker compose up -d
+
+      - name: Migrate and seed
+        run: |
+          pnpm --filter @rapid/api prisma:migrate:dev
+          pnpm --filter @rapid/api seed
+
+      - name: Build and start API
+        working-directory: apps/api
+        run: |
+          pnpm build
+          node dist/main.js &
+      
+      - name: Wait for API
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:4000/api/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to start"
+          exit 1
+
+      - name: Install Playwright Browsers for API
+        working-directory: apps/api
+        run: pnpm exec playwright install --with-deps
+
+      - name: Install Playwright Browsers for Web
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps
+
+      - name: Start Web
+        working-directory: apps/web
+        run: pnpm dev &
+      
+      - name: Wait for Web
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:3000 > /dev/null; then
+              echo "Web is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Web failed to start"
+          exit 1
+
+      - name: Request PDF generation via API
+        id: gen
+        run: |
+          REPORT_ID=$(curl -sSf http://localhost:4000/api/reports | jq -r '.[0].id')
+          echo "reportId=$REPORT_ID" >> $GITHUB_OUTPUT
+          RESULT=$(curl -sSf -X POST http://localhost:4000/api/pdfs/$REPORT_ID)
+          echo "$RESULT" > result.json
+          DOWNLOAD_URL=$(jq -r '.downloadUrl' result.json)
+          echo "downloadUrl=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
+
+      - name: Download PDF
+        run: |
+          mkdir -p artifacts
+          curl -sSfL "${{ steps.gen.outputs.downloadUrl }}" -o artifacts/audit-preview.pdf
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-preview
+          path: artifacts/audit-preview.pdf
+
+      - name: Teardown infra
+        if: always()
+        run: docker compose down -v
