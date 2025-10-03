@@ -2,7 +2,7 @@
 
 import React from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+const PROXY_BASE = "/api/proxy";
 
 export default function UploadPage() {
   const [accountName, setAccountName] = React.useState("");
@@ -16,7 +16,7 @@ export default function UploadPage() {
   const loadUploads = async (accountId: string) => {
     setLoadingList(true);
     try {
-      const res = await fetch(`${API_URL}/uploads/account/${accountId}`);
+      const res = await fetch(`${PROXY_BASE}/uploads/account/${accountId}`);
       const data = await res.json();
       setUploads(data);
     } finally {
@@ -25,7 +25,7 @@ export default function UploadPage() {
   };
 
   const ensureAccount = async (name: string) => {
-    const res = await fetch(`${API_URL}/accounts`, {
+    const res = await fetch(`${PROXY_BASE}/accounts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name })
@@ -61,7 +61,7 @@ export default function UploadPage() {
     }
     try {
       const acc = await ensureAccount(accountName.trim());
-      const signRes = await fetch(`${API_URL}/uploads/sign`, {
+      const signRes = await fetch(`${PROXY_BASE}/uploads/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -77,7 +77,7 @@ export default function UploadPage() {
       await putWithProgress(url, file, setProgress);
 
       // Confirm upload after successful PUT
-      const confirmRes = await fetch(`${API_URL}/uploads/confirm`, {
+      const confirmRes = await fetch(`${PROXY_BASE}/uploads/confirm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ objectKey: key })

@@ -51,6 +51,16 @@ See docs/audit-ui.md for:
 - Accessibility and performance expectations
 - Practical task checklist and acceptance criteria
 
+## API access from Web (proxy)
+
+- The web app centralizes calls to the API through a server-side proxy:
+  - Route: /api/proxy/[...path]
+  - Injects Authorization: Bearer <JWT> from the token cookie
+  - Adds X-Request-ID for correlation and mirrors upstream request ID
+- Use the helper functions in apps/web/src/lib/api.ts:
+  - apiGet(\"/reports\"), apiPost(\"/uploads/sign\", payload)
+- Direct calls to NEXT_PUBLIC_API_URL are no longer needed in the web app
+
 ## Next Steps (per TASKS.md)
 
 - Epic 0: add design tokens and auth skeleton; CI a11y gate for /login
